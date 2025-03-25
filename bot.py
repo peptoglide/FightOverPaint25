@@ -20,6 +20,27 @@ directions = [
     Direction.NORTHWEST,
 ]
 
+# Should add up to 100
+
+bot_chance = {UnitType.SOLDIER : 33, UnitType.MOPPER : 33, UnitType.SPLASHER : 34}
+tower_chance = {UnitType.LEVEL_ONE_MONEY_TOWER : 45, UnitType.LEVEL_ONE_PAINT_TOWER : 45, UnitType.LEVEL_ONE_DEFENSE_TOWER : 10}
+
+def update_bot_chance(soldier, mopper, splasher):
+    bot_chance[UnitType.SOLDIER] = soldier
+    bot_chance[UnitType.MOPPER] = mopper
+    bot_chance[UnitType.SPLASHER] = splasher
+
+def update_tower_chance(money, paint, defense):
+    tower_chance[UnitType.LEVEL_ONE_MONEY_TOWER] = money
+    tower_chance[UnitType.LEVEL_ONE_PAINT_TOWER] = paint
+    tower_chance[UnitType.LEVEL_ONE_DEFENSE_TOWER] = defense
+
+def get_random_unit(probabilities):
+    n = random.randint(1, 100)
+    for (unit, prob) in probabilities.items():
+        if n <= prob: return unit
+        n -= prob
+
 
 def turn():
     """
