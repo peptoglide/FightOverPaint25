@@ -1,5 +1,5 @@
 import random
-#Hello 
+#Hello world
 
 from battlecode25.stubs import *
 
