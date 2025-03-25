@@ -34,7 +34,7 @@ def turn():
     elif get_type() == UnitType.MOPPER:
         run_mopper()
     elif get_type() == UnitType.SPLASHER:
-        pass  # TODO
+        run_splasher()
     elif get_type().is_tower_type():
         run_tower()
     else:
@@ -129,6 +129,9 @@ def run_mopper():
 
     # We can also move our code into different methods or classes to better organize it!
     update_enemy_robots()
+
+def run_splasher():
+    return
 
 
 def update_enemy_robots():
