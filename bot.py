@@ -188,7 +188,7 @@ def run_tower():
         for random_enemy in enemy_robots:
             loc2 = random_enemy.get_location()
             dist = (loc.x - loc2.x) ** 2 + (loc.y - loc2.y) ** 2
-            if(dist <= 10): #TODO: This part randomly returns out of range errors
+            if can_attack(random_enemy.get_location()):
                 attack(loc2)
                 break
 
