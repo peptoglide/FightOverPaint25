@@ -1,19 +1,15 @@
 import random
 from enum import Enum
-from enum import Enum
 #Hello world guys lol
 
 from battlecode25.stubs import *
 
-# This is an example bot written by the developers!
-# Use this to help write your own code, or run it against your bot to see how well you can do!
+# This is NOT an example bot written by the developers!
+# DON'T use this to help write your own code.
+# Please only run it against your bot to see how well you can do!
 
 class MessageType(Enum):
     SAVE_CHIPS = 0
-
-class MessageType(Enum):
-    SAVE_CHIPS = 0
-
 
 # Globals
 turn_count = 0
@@ -154,16 +150,6 @@ known_towers = []
 should_save = False
 savingTurns = 0
 
-# When we're trying to build, how long should we save
-save_turns = 70 # Tune
-
-# Privates
-buildCooldown = 0
-is_messanger = False # We designate half of moppers to be messangers
-known_towers = []
-should_save = False
-savingTurns = 0
-
 tower_upgrade_threshold = 1
 
 def turn():
@@ -188,7 +174,6 @@ def turn():
         run_tower()
     else:
         pass  # Other robot types?
-
 
 def run_tower():
     global buildCooldown
@@ -260,7 +245,6 @@ def run_tower():
 
     # TODO: can we attack other bots?
 
-
 def run_soldier():
     # Sense information about all visible nearby tiles.
     nearby_tiles = sense_nearby_map_infos(center=get_location())
@@ -314,7 +298,7 @@ def run_soldier():
 
     # Move and attack randomly if no objective.
     dir = directions[random.randint(0, len(directions) - 1)]
-    next_loc = get_location().add(dir)
+    # next_loc = get_location().add(dir)
     if can_move(dir):
         move(dir)
 
@@ -323,7 +307,6 @@ def run_soldier():
     current_tile = sense_map_info(get_location())
     if not current_tile.get_paint().is_ally() and can_attack(get_location()):
         attack(get_location())
-
 
 def run_mopper():
     if is_messanger:
@@ -363,7 +346,6 @@ def run_mopper():
             log("Mop Swing! Booyah!")
             attacked = True
             break
-        
 
     if not attacked:
         for tile in nearby_tiles:
@@ -434,7 +416,6 @@ def check_nearby_ruins():
         # Return early
         return
 
-    
 def update_friendly_towers():
     global should_save
 
@@ -458,6 +439,7 @@ def update_friendly_towers():
         # Add to our known towers array
         known_towers.append(ally_loc)
         set_indicator_string(f"Found tower {ally.get_id()}")
+
 def check_nearby_ruins():
     global should_save
     nearby_tiles = sense_nearby_map_infos(center=get_location())
@@ -479,7 +461,6 @@ def check_nearby_ruins():
 
         # Return early
         return
-
     
 def update_friendly_towers():
     global should_save
