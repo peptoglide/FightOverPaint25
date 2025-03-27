@@ -534,14 +534,26 @@ def run_mopper():
 #TODO (LITERALLY THE BIGGEST TODO YET)
 def run_splasher():
     # dir = directions[random.randint(0, len(directions) - 1)]
+    # Prioritize where without ally paint
+    nearby_tiles = sense_nearby_map_infos(center=get_location())
+    cur_dir = None
+    cur_dist = 999999
+    for tile in nearby_tiles:
+        if not tile.is_wall() and not tile.get_paint().is_ally():
+            dst = get_location().distance_squared_to(tile.get_map_location())
+            if dst < cur_dist:
+                cur_dist = dst
+                cur_dir = get_location().direction_to(tile.get_map_location())
+    cur_dir = cur_dir if random.random() > 0.99 else get_random_dir() # Introduce some randomness
+    if cur_dir is not None and can_move(cur_dir): move(cur_dir)
+
     dir = get_random_dir()
-    next_loc = get_location().add(dir)
     if can_move(dir):
         move(dir)
 
     # Get all tiles we're gonna paint over to avoid painting on marked tiles 
     # Total splashed tiles = 13. We're gonna splash if 5+ tiles are splashable
-    if can_attack(next_loc):
+    if can_attack(get_location()):
         loc = get_location()
         see_primary = False
         see_secondary = False
@@ -552,7 +564,7 @@ def run_splasher():
                 see_secondary = True
             elif tile.get_mark() == PaintType.ALLY_PRIMARY:
                 see_primary = True
-            if not tile.get_mark().is_ally(): splashables += 1
+            if not tile.has_ruin() and not tile.is_wall() and not tile.get_mark().is_ally(): splashables += 1
         
         if splashables >= 5:
             if see_primary and see_secondary: # Impossible
