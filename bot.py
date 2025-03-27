@@ -116,6 +116,16 @@ def bug2(target):
 bot_chance = {UnitType.SOLDIER : 40, UnitType.MOPPER : 25, UnitType.SPLASHER : 35}
 tower_chance = {UnitType.LEVEL_ONE_MONEY_TOWER : 65, UnitType.LEVEL_ONE_PAINT_TOWER : 25, UnitType.LEVEL_ONE_DEFENSE_TOWER : 10}
 bot_name = {UnitType.SOLDIER : "SOLDIER", UnitType.MOPPER : "MOPPER", UnitType.SPLASHER : "SPLASHER"}
+direction_distribution = {
+    Direction.NORTH : None,
+    Direction.NORTHEAST: None,
+    Direction.EAST: None,
+    Direction.SOUTHEAST: None,
+    Direction.SOUTH: None,
+    Direction.SOUTHWEST: None,
+    Direction.WEST: None,
+    Direction.NORTHWEST: None,
+}
 
 def update_bot_chance(soldier, mopper, splasher):
     global bot_chance
@@ -128,6 +138,41 @@ def update_tower_chance(money, paint, defense):
     tower_chance[UnitType.LEVEL_ONE_MONEY_TOWER] = money
     tower_chance[UnitType.LEVEL_ONE_PAINT_TOWER] = paint
     tower_chance[UnitType.LEVEL_ONE_DEFENSE_TOWER] = defense
+
+def update_direction_distribution():
+    global direction_distribution
+    cur_loc = get_location()
+    left = cur_loc.x
+    right = get_map_width() - left - 1
+    down = cur_loc.y
+    up = get_map_height() - down - 1
+    total = left+right+down+up
+    left = int(left/total*50)
+    right = int(right/total*50)
+    down = int(down/total*50)
+    up = int(up/total*50)
+    total = left+right+down+up
+    left += 50-total
+    ul = (up + left)//2
+    ur = (up + right)//2
+    dl = (down + left)//2
+    dr = (down + right)//2
+    total = ul + ur + dl + dr
+    ur += 50-total
+    direction_distribution[Direction.NORTH] = up
+    direction_distribution[Direction.NORTHEAST] = ur
+    direction_distribution[Direction.EAST] = right
+    direction_distribution[Direction.SOUTHEAST] = dr
+    direction_distribution[Direction.SOUTH] = down
+    direction_distribution[Direction.SOUTHWEST] = dl
+    direction_distribution[Direction.WEST] = left
+    direction_distribution[Direction.NORTHWEST] = ul
+
+def get_random_dir():
+    n = random.randint(1, 100)
+    for (direction, prob) in direction_distribution.items():
+        if n <= prob: return direction
+        n -= prob
 
 def get_random_unit(probabilities):
     n = random.randint(1, 100)
@@ -148,7 +193,11 @@ is_messanger = False # We designate half of moppers to be messangers
 known_towers = []
 should_save = False
 savingTurns = 0
-updated = False
+updated = 0
+early_game = 400
+mid_game = 1000
+tower_upgrade_minimum = 10000
+closest_paint_tower = None
 
 tower_upgrade_threshold = 1
 
@@ -163,10 +212,24 @@ def turn():
     global updated
     turn_count += 1
 
+    if direction_distribution[Direction.NORTH] == None:
+        update_direction_distribution()
+
     # Prioritize chips in early game
-    if turn_count >= 50 and not updated:
-        update_tower_chance(25, 70, 5)
-        updated = True
+    # Seems like chips are a bit too popular
+    if turn_count >= 0 and updated == 0:
+        update_tower_chance(50, 50, 0)
+        update_bot_chance(50, 50, 0)
+        updated = 1
+    if turn_count >= early_game and updated == 1:
+        update_tower_chance(40, 55, 5)
+        update_bot_chance(40, 40, 20)
+        updated = 2
+    if turn_count >= mid_game and updated == 2:
+        update_tower_chance(35, 35, 30)
+        update_bot_chance(30, 30, 40)
+        updated = 3
+    
 
     if get_type() == UnitType.SOLDIER:
         run_soldier()
@@ -305,10 +368,26 @@ def run_soldier():
                 cur_dir = dir
     if cur_dir is not None and can_move(cur_dir): move(cur_dir)
 
-    # If we can't find empty squares, go randomly
-    dir = directions[random.randint(0, len(directions) - 1)]
-    if can_move(dir):
-        move(dir)
+    # Upgrade towers
+    towers = sense_nearby_ruins()
+    if get_chips() >= tower_upgrade_minimum:
+        for ruins in towers:
+            if can_upgrade_tower(ruins):
+                upgrade_tower(ruins)
+                log(f"Upgraded tower at {str(ruins)}!")
+    
+    # Saving closest paint tower location
+    # WIP
+
+    # If low on paint, go back
+    # Else, go randomly
+    if (get_paint()/UnitType.SOLDIER.paint_capacity <= 0.2):
+        bug2(closest_paint_tower)
+    else:
+        # dir = directions[random.randint(0, len(directions) - 1)]
+        dir = get_random_dir()
+        if can_move(dir):
+            move(dir)
 
     # Try to paint beneath us as we walk to avoid paint penalties.
     # Avoiding wasting paint by re-painting our own tiles.
@@ -328,7 +407,8 @@ def run_mopper():
             move(dir)
 
     # Move and attack randomly.
-    dir = directions[random.randint(0, len(directions) - 1)]
+    # dir = directions[random.randint(0, len(directions) - 1)]
+    dir = get_random_dir()
     next_loc = get_location().add(dir)
     enemy_robots = sense_nearby_robots(center=get_location(),radius_squared=2, team=get_team().opponent())
     nearby_tiles = sense_nearby_map_infos(center=get_location(),radius_squared=2)
@@ -363,7 +443,8 @@ def run_mopper():
 
 #TODO (LITERALLY THE BIGGEST TODO YET)
 def run_splasher():
-    dir = directions[random.randint(0, len(directions) - 1)]
+    # dir = directions[random.randint(0, len(directions) - 1)]
+    dir = get_random_dir()
     next_loc = get_location().add(dir)
     if can_move(dir):
         move(dir)
@@ -387,7 +468,7 @@ def run_splasher():
             if see_primary and see_secondary: # Impossible
                 pass
             elif see_secondary: 
-                attack(loc, True)
+                attack(loc, False) # Why splash secondary??
             else:
                 attack(loc, False)
 
