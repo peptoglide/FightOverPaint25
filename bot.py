@@ -28,7 +28,7 @@ directions = [
 prev_dest = MapLocation(100000, 100000)
 line = set()
 obstacle_start_dist = 0
-tracing_dir = None
+tracing_dir = 0
 tracing = False
 
 def sign(num):
@@ -181,7 +181,7 @@ def get_random_unit(probabilities):
         n -= prob
 
 # Determine build delays between each bot spawned by a tower
-buildDelay = 15 # Tune
+buildDelay = 20 # Tune
 buildDeviation = 3
 
 # When we're trying to build, how long should we save
@@ -189,7 +189,7 @@ save_turns = 70 # Tune
 
 # Privates
 buildCooldown = 0
-is_messanger = False # We designate half of moppers to be messangers
+is_messenger = False # We designate half of moppers to be messangers
 known_towers = []
 should_save = False
 savingTurns = 0
@@ -198,6 +198,9 @@ early_game = 400
 mid_game = 1000
 tower_upgrade_minimum = 10000
 closest_paint_tower = None
+shooting_tower = False
+tower_target = None
+danger_percent = 0.2
 
 tower_upgrade_threshold = 1
 
@@ -207,8 +210,7 @@ def turn():
     This function will be called at the beginning of every turn and should contain the bulk of your robot commands
     """
     global turn_count
-    global is_messanger
-    global is_messanger
+    global is_messenger
     global updated
     turn_count += 1
 
@@ -218,11 +220,11 @@ def turn():
     # Prioritize chips in early game
     # Seems like chips are a bit too popular
     if turn_count >= 0 and updated == 0:
-        update_tower_chance(50, 50, 0)
+        update_tower_chance(60, 40, 0)
         update_bot_chance(50, 50, 0)
         updated = 1
     if turn_count >= early_game and updated == 1:
-        update_tower_chance(40, 55, 5)
+        update_tower_chance(50, 40, 10)
         update_bot_chance(40, 40, 20)
         updated = 2
     if turn_count >= mid_game and updated == 2:
@@ -230,11 +232,18 @@ def turn():
         update_bot_chance(30, 30, 40)
         updated = 3
     
+    global buildDelay
+    if get_chips() >= 10000:
+        buildDelay = 15
+    if get_chips() >= 20000:
+        buildDelay = 10
+    if get_chips() <= 4000:
+        buildDelay = 20
 
     if get_type() == UnitType.SOLDIER:
         run_soldier()
     elif get_type() == UnitType.MOPPER:
-        if get_id() % 2 == 0: is_messanger = True
+        if get_id() % 2 == 0: is_messenger = True
         run_mopper()
     elif get_type() == UnitType.SPLASHER:
         run_splasher()
@@ -296,6 +305,23 @@ def run_tower():
 def run_soldier():
     # Sense information about all visible nearby tiles.
     nearby_tiles = sense_nearby_map_infos(center=get_location())
+
+    # Shoots enemy ruin if in range
+    # Go to enemy ruin if in vision
+    global shooting_tower, tower_target
+    if shooting_tower:
+        if can_attack(tower_target):
+            attack(tower_target)
+        else:
+            if (can_move(get_location().direction_to(tower_target))):
+                move(get_location().direction_to(tower_target))
+        return
+    else:
+        for tile in nearby_tiles:
+            if tile.has_ruin() and tile.get_paint().is_enemy():
+                tower_target = tile
+                shooting_tower = True
+                break
 
     # Search for a nearby ruin to complete.
     cur_ruin = None
@@ -381,13 +407,13 @@ def run_soldier():
 
     # If low on paint, go back
     # Else, go randomly
-    if (get_paint()/UnitType.SOLDIER.paint_capacity <= 0.2):
-        bug2(closest_paint_tower)
-    else:
+    # if (get_paint()/UnitType.SOLDIER.paint_capacity <= danger_percent):
+        # bug2(closest_paint_tower)
+    # else:
         # dir = directions[random.randint(0, len(directions) - 1)]
-        dir = get_random_dir()
-        if can_move(dir):
-            move(dir)
+    dir = get_random_dir()
+    if can_move(dir):
+        move(dir)
 
     # Try to paint beneath us as we walk to avoid paint penalties.
     # Avoiding wasting paint by re-painting our own tiles.
@@ -396,7 +422,7 @@ def run_soldier():
         attack(get_location())
 
 def run_mopper():
-    if is_messanger:
+    if is_messenger:
         set_indicator_dot(get_location(), 255, 0, 0)
 
     if should_save and len(known_towers) > 0:
@@ -435,7 +461,7 @@ def run_mopper():
                 if can_attack(mop_loc): attack(mop_loc)
                 break
 
-    if is_messanger:
+    if is_messenger:
         update_friendly_towers()
 
     # We can also move our code into different methods or classes to better organize it!
