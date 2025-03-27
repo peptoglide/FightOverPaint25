@@ -274,7 +274,7 @@ save_turns = 70 # Tune
 messenger_work_distribution = 25
 
 # How many turns after does a soldier senses towers
-sense_tower_delay = 5
+sense_tower_delay = 10
 # The same for sensing ruins
 sense_ruin_delay = 1
 # Threshold for returning to ruin (splashers)
@@ -481,12 +481,7 @@ def run_soldier():
 
     # Upgrade towers
     if can_repeat_cooldowned_action(sense_tower_delay):
-        towers = sense_nearby_ruins()
-        if get_chips() >= tower_upgrade_minimum:
-            for ruins in towers:
-                if can_upgrade_tower(ruins):
-                    upgrade_tower(ruins)
-                    log(f"Upgraded tower at {str(ruins)}!")
+        try_to_upgrade_towers()
     
     # Saving closest paint tower location
     # WIP
@@ -548,7 +543,8 @@ def run_mopper():
         check_nearby_ruins()
         update_friendly_towers()
 
-
+    if can_repeat_cooldowned_action(sense_tower_delay):
+        try_to_upgrade_towers()
     # We can also move our code into different methods or classes to better organize it!
     # update_enemy_robots()
 
@@ -624,8 +620,10 @@ def run_aggresive_splasher():
                     attack(loc, False) # Why splash secondary??
                 else:
                     attack(loc, False)
+        if can_repeat_cooldowned_action(sense_tower_delay):
+            try_to_upgrade_towers()
 
-                    
+
 def check_nearby_ruins():
     global should_save
     nearby_tiles = sense_nearby_map_infos(center=get_location())
@@ -691,3 +689,11 @@ def update_enemy_robots():
     #     for ally in ally_robots:
     #         if can_send_message(ally.location):
     #             send_message(ally.location, len(enemy_robots))
+
+def try_to_upgrade_towers():
+    towers = sense_nearby_ruins()
+    if get_chips() >= tower_upgrade_minimum:
+        for ruins in towers:
+            if can_upgrade_tower(ruins):
+                upgrade_tower(ruins)
+                log(f"Upgraded tower at {str(ruins)}!")
