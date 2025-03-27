@@ -272,7 +272,7 @@ save_turns = 70 # Tune
 
 # Privates
 buildCooldown = 0
-is_messanger = False # We designate half of moppers to be messangers
+is_messenger = False # We designate half of moppers to be messangers
 known_towers = []
 should_save = False
 savingTurns = 0
@@ -290,8 +290,8 @@ def turn():
     This function will be called at the beginning of every turn and should contain the bulk of your robot commands
     """
     global turn_count
-    global is_messanger
-    global is_messanger
+    global is_messenger
+    global is_messenger
     global updated
     global direction_distribution
     turn_count += 1
@@ -324,7 +324,7 @@ def turn():
     if get_type() == UnitType.SOLDIER:
         run_soldier()
     elif get_type() == UnitType.MOPPER:
-        if get_id() % 2 == 0: is_messanger = True
+        if get_id() % 2 == 0: is_messenger = True
         run_mopper()
     elif get_type() == UnitType.SPLASHER:
         run_splasher()
@@ -486,7 +486,7 @@ def run_soldier():
         attack(get_location())
 
 def run_mopper():
-    if is_messanger:
+    if is_messenger:
         set_indicator_dot(get_location(), 255, 0, 0)
 
     if should_save and len(known_towers) > 0:
@@ -525,7 +525,7 @@ def run_mopper():
                 if can_attack(mop_loc): attack(mop_loc)
                 break
 
-    if is_messanger:
+    if is_messenger:
         update_friendly_towers()
 
     # We can also move our code into different methods or classes to better organize it!
