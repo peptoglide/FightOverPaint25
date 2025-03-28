@@ -338,16 +338,16 @@ def turn():
     # Prioritize chips in early game
     # Seems like chips are a bit too popular
     if turn_count >= 0 and updated == 0:
-        update_tower_chance(70, 30, 0)
-        update_bot_chance(50, 25, 25)
+        update_tower_chance(75, 25, 0)
+        update_bot_chance(70, 15, 15)
         updated = 1
     if turn_count >= early_game and updated == 1:
         update_tower_chance(40, 55, 5)
-        update_bot_chance(40, 40, 20)
+        update_bot_chance(50, 20, 30)
         updated = 2
     if turn_count >= mid_game and updated == 2:
         update_tower_chance(40, 40, 20)
-        update_bot_chance(30, 35, 35)
+        update_bot_chance(50, 30, 20)
         updated = 3
     
 
