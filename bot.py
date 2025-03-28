@@ -301,7 +301,7 @@ return_to_paint = {UnitType.SOLDIER : 20, UnitType.MOPPER : 0, UnitType.SPLASHER
 back_to_aggresion = {UnitType.SOLDIER : 80, UnitType.MOPPER : 50, UnitType.SPLASHER : 85}
 
 # Amount of paint for each transfers (negative)
-paint_per_transfer = -50
+paint_per_transfer = -100
 
 # End of constants that need tuning
 
@@ -323,7 +323,7 @@ paintingSRP = False
 tower_upgrade_threshold = 1
 next_spawn = None
 return_loc = None
-paint_tower_location = None
+paint_tower_location = MapLocation(99999, 99999)
 
 # Find paint towers
 def check_paint_towers():
@@ -367,15 +367,15 @@ def turn():
     # Seems like chips are a bit too popular
     if turn_count >= 0 and updated == 0:
         update_tower_chance(70, 30, 0)
-        update_bot_chance(50, 35, 15)
+        update_bot_chance(40, 40, 20)
         updated = 1
     if turn_count >= early_game and updated == 1:
         update_tower_chance(40, 55, 0)
-        update_bot_chance(40, 25, 35)
+        update_bot_chance(45, 35, 20)
         updated = 2
     if turn_count >= mid_game and updated == 2:
         update_tower_chance(40, 40, 5)
-        update_bot_chance(30, 25, 45)
+        update_bot_chance(30, 30, 40)
         updated = 3
     
 
@@ -396,6 +396,7 @@ def run_tower():
     global buildCooldown
     global savingTurns
     global should_save
+    global next_spawn
     # Pick a direction to build in.
     dir = get_random_dir()
     next_loc = get_location().add(dir)
@@ -447,6 +448,10 @@ def run_soldier():
     
     global is_refilling, is_returning, paint_tower_location, return_loc, paint_per_transfer
     if is_refilling:
+        if not on_the_map(paint_tower_location):
+            is_refilling = False
+            is_returning = True
+            return
         bug2(paint_tower_location)
         if can_sense_location(paint_tower_location):
             paint_tower = sense_robot_at_location(paint_tower_location)
@@ -464,6 +469,7 @@ def run_soldier():
         bug2(return_loc)
         if return_loc == get_location():
             is_returning = False
+            update_direction_distribution()
         return
 
     global paintingSRP
@@ -590,6 +596,7 @@ def run_soldier():
     # Soldier has 200 paint capacity
     if (get_paint()/2 <= return_to_paint[UnitType.SOLDIER]):
         is_refilling = True
+        paint_tower_location = MapLocation(99999, 99999)
         cur = 999999
         for tower in known_paint_towers:
             if get_location().distance_squared_to(tower) < cur:
