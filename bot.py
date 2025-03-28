@@ -338,7 +338,7 @@ def turn():
     # Seems like chips are a bit too popular
     if turn_count >= 0 and updated == 0:
         update_tower_chance(70, 30, 0)
-        update_bot_chance(65, 35, 0)
+        update_bot_chance(50, 25, 25)
         updated = 1
     if turn_count >= early_game and updated == 1:
         update_tower_chance(40, 55, 5)
@@ -370,16 +370,17 @@ def run_tower():
     dir = get_random_dir()
     loc = get_location()
     next_loc = get_location().add(dir)
-    enemy_robots = sense_nearby_robots(center=get_location(),team=get_team().opponent())
+    if is_action_ready():
+        enemy_robots = sense_nearby_robots(center=get_location(),team=get_team().opponent())
 
-    # Ability for towers to attack
-    if(is_action_ready() and len(enemy_robots) != 0):
-        # Pick a random target to attack
-        for random_enemy in enemy_robots:
-            loc2 = random_enemy.get_location()
-            if can_attack(random_enemy.get_location()):
-                attack(loc2)
-                break
+        # Ability for towers to attack
+        if(len(enemy_robots) != 0):
+            # Pick a random target to attack
+            for random_enemy in enemy_robots:
+                loc2 = random_enemy.get_location()
+                if can_attack(random_enemy.get_location()):
+                    attack(loc2)
+                    break
 
     # Pick a random robot type to build.
     # Should hold off on building since we're gonna end up with all moppers!
@@ -427,7 +428,7 @@ def run_soldier():
             log(f"Built a SRP at {get_location()}")
             paintingSRP = False
         return
-    if (turn_count > early_game and turn_count <= mid_game) or (turn_count > mid_game and random.randint(1, 100) <= 5):
+    if (turn_count > early_game and turn_count <= mid_game) or (turn_count > mid_game and can_repeat_cooldowned_action(20)):
         # Checks in a square if all squares are empty
         paintingSRP = True
         for dx in range(-2, 3):
@@ -561,28 +562,33 @@ def run_mopper():
     # Move and attack randomly.
     # dir = directions[random.randint(0, len(directions) - 1)]
     dir = get_random_dir()
-    enemy_robots = sense_nearby_robots(center=get_location(),radius_squared=2, team=get_team().opponent())
-    nearby_tiles = sense_nearby_map_infos(center=get_location(),radius_squared=2)
+    
+    
 
     if can_move(dir):
         move(dir)
 
     # Only attacks when sees enemy
-    for enemy in enemy_robots:
-        target_loc = enemy.get_location()
-        swingDir = get_location().direction_to(target_loc)
-        if can_mop_swing(swingDir):
-            mop_swing(swingDir)
-            log("Mop Swing! Booyah!")
-            break
-
-    for tile in nearby_tiles:
-        if tile.get_paint() == PaintType.ENEMY_PRIMARY or tile.get_paint() == PaintType.ENEMY_SECONDARY:
-            mop_dir = get_location().direction_to(tile.get_map_location())
-            mop_loc = get_location().add(mop_dir)
-            if can_attack(mop_loc): 
-                attack(mop_loc)
+    if is_action_ready():
+        enemy_robots = sense_nearby_robots(center=get_location(),radius_squared=2, team=get_team().opponent())
+        for enemy in enemy_robots:
+            target_loc = enemy.get_location()
+            swingDir = get_location().direction_to(target_loc)
+            if can_mop_swing(swingDir):
+                mop_swing(swingDir)
+                log("Mop Swing! Booyah!")
                 break
+
+    if is_action_ready():
+        nearby_tiles = sense_nearby_map_infos(center=get_location(),radius_squared=2)
+        for tile in nearby_tiles:
+            if tile.get_paint().is_enemy():
+                mop_dir = get_location().direction_to(tile.get_map_location())
+                mop_loc = get_location().add(mop_dir)
+                if can_attack(mop_loc): 
+                    attack(mop_loc)
+                    break
+                
     will_do_messenger = (get_id() % messenger_work_distribution == turn_count % messenger_work_distribution) # Split the work over many turns
     if will_do_messenger and is_messenger:
         check_nearby_ruins()
