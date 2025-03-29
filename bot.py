@@ -292,6 +292,10 @@ sense_ruin_delay = 1
 # Threshold for returning to ruin (splashers)
 return_to_paint = {UnitType.SOLDIER : 0, UnitType.MOPPER : 0, UnitType.SPLASHER : 25}
 back_to_aggresion = {UnitType.SOLDIER : 75, UnitType.MOPPER : 50, UnitType.SPLASHER : 85}
+# Paint per transfer
+paint_per_transfer = 50
+# Min splashable squares to attack
+splash_threshold = 2
 
 # Privates
 buildCooldown = 0
@@ -638,63 +642,54 @@ def run_splasher():
     paint_percentage = get_paint() / 3
     if len(known_paint_towers) == 0: run_aggresive_splasher()
     else :
-        if not is_refilling and paint_percentage > return_to_paint[UnitType.SPLASHER]:
-            run_aggresive_splasher()
-        else:
-            if paint_percentage > back_to_aggresion[UnitType.SPLASHER]:
-                is_refilling = False
-            else:
-                tower_loc = known_paint_towers[0]
-                is_refilling = True
-                bug2(tower_loc)
-                if can_sense_location(tower_loc):
-                    paint_tower = sense_robot_at_location(tower_loc)
-                    if paint_tower == None:
-                        known_paint_towers.pop(0)
-                    elif can_transfer_paint(tower_loc, -25): transfer_paint(tower_loc, -25)
+        try_refill_paint(paint_percentage, UnitType.SPLASHER)
 
 def run_aggresive_splasher():
-        global known_paint_towers
-        nearby_tiles = sense_nearby_map_infos(center=get_location())
+    global known_paint_towers
+    nearby_tiles = sense_nearby_map_infos(center=get_location())
 
-        # Get all tiles we're gonna paint over to avoid painting on marked tiles 
-        # Total splashed tiles = 13. We're gonna splash if 5+ tiles are splashable
+    # Get all tiles we're gonna paint over to avoid painting on marked tiles 
+    # Total splashed tiles = 13. We're gonna splash if splash_threshold+ tiles are splashable
+    if True:
         if can_attack(get_location()):
             loc = get_location()
             splashables = 0
             for tile in nearby_tiles:
                 dst = loc.distance_squared_to(tile.get_map_location())
                 if dst > 4: continue
-                if (not tile.has_ruin()) and (not tile.is_wall()) and (not tile.get_paint().is_ally()): splashables += 1
+                if dst > 2: # Can't override
+                    if (not tile.has_ruin()) and (not tile.is_wall()) and (tile.get_paint() == PaintType.EMPTY): splashables += 1
+                else:
+                    if (not tile.has_ruin()) and (not tile.is_wall()) and (not tile.get_paint().is_ally()): splashables += 1
             
-            if splashables >= 5:
-               attack(loc, False)
+            if splashables >= splash_threshold:
+                attack(loc, False)
 
-        # Prioritize moving to empty squares
-        cur_dir = None
-        cur_dist = 999999
-        for tile in nearby_tiles:
-            # Save locations for paint towers
-            if tile.has_ruin():
-                tower = sense_robot_at_location(tile.get_map_location())
-                if (tower != None) and tower.get_team() == get_team(): # Is ally tower
-                    if tower.get_type() in {UnitType.LEVEL_ONE_PAINT_TOWER, UnitType.LEVEL_TWO_PAINT_TOWER, UnitType.LEVEL_THREE_PAINT_TOWER}: # Is paint tower
-                        if not (tower.get_location() in known_paint_towers):
-                            known_paint_towers.append(tower.get_location())
-            if (not tile.is_wall()) and (not tile.has_ruin()) and (not tile.get_paint().is_ally()):
-                dst = get_location().distance_squared_to(tile.get_map_location())
-                if dst < cur_dist:
-                    cur_dist = dst
-                    cur_dir = get_location().direction_to(tile.get_map_location())
-        cur_dir = cur_dir if random.random() > 0.99 else get_random_dir() # Introduce some randomness
-        if cur_dir is not None and can_move(cur_dir): move(cur_dir)
+    # Prioritize moving to empty squares
+    cur_dir = None
+    cur_dist = 999999
+    for tile in nearby_tiles:
+        # Save locations for paint towers
+        if tile.has_ruin():
+            tower = sense_robot_at_location(tile.get_map_location())
+            if (tower != None) and tower.get_team() == get_team(): # Is ally tower
+                if tower.get_type() in {UnitType.LEVEL_ONE_PAINT_TOWER, UnitType.LEVEL_TWO_PAINT_TOWER, UnitType.LEVEL_THREE_PAINT_TOWER}: # Is paint tower
+                    if not (tower.get_location() in known_paint_towers):
+                        known_paint_towers.append(tower.get_location())
+        if (not tile.is_wall()) and (not tile.has_ruin()) and (not tile.get_paint().is_ally()):
+            dst = get_location().distance_squared_to(tile.get_map_location())
+            if dst < cur_dist:
+                cur_dist = dst
+                cur_dir = get_location().direction_to(tile.get_map_location())
+    cur_dir = cur_dir if random.random() > 0.99 else get_random_dir() # Introduce some randomness
+    if cur_dir is not None and can_move(cur_dir): move(cur_dir)
 
-        dir = get_random_dir()
-        if can_move(dir):
-            move(dir)
+    dir = get_random_dir()
+    if can_move(dir):
+        move(dir)
 
-        if can_repeat_cooldowned_action(sense_tower_delay):
-            try_to_upgrade_towers()
+    if can_repeat_cooldowned_action(sense_tower_delay):
+        try_to_upgrade_towers()
 
 def check_nearby_ruins():
     global should_save
@@ -769,3 +764,21 @@ def try_to_upgrade_towers():
             if can_upgrade_tower(ruins):
                 upgrade_tower(ruins)
                 log(f"Upgraded tower at {str(ruins)}!")
+
+def try_refill_paint(paint_percentage, unitType):
+    global known_paint_towers
+    global is_refilling
+    if len(known_paint_towers) == 0:
+        is_refilling = False
+        return
+    if paint_percentage > back_to_aggresion[unitType]:
+        is_refilling = False
+    else:
+        tower_loc = known_paint_towers[0]
+        is_refilling = True
+        bug2(tower_loc)
+        if can_sense_location(tower_loc):
+            paint_tower = sense_robot_at_location(tower_loc)
+            if paint_tower == None:
+                known_paint_towers.pop(0)
+            elif can_transfer_paint(tower_loc, -paint_per_transfer): transfer_paint(tower_loc, -paint_per_transfer)
