@@ -338,6 +338,7 @@ cur_tile = None
 is_early_game = False
 is_mid_game = False
 is_late_game = False
+nearby_tiles = []
 SRP = get_resource_pattern()
 
 def can_repeat_cooldowned_action(time_delay):
@@ -352,7 +353,9 @@ def turn():
     global is_messenger
     global updated
     global direction_distribution
+    global buildDelay
     global explore, target_corner, explore_chance
+    global is_early_game, is_mid_game, is_late_game
     # HOW DID NO ONE REALIZE TURN COUNT IS NOT COUNTING FROM THE START
     turn_count = get_round_num()
 
@@ -383,8 +386,8 @@ def turn():
         is_early_game = True
         is_mid_game = False
         is_late_game = False
-        update_tower_chance(65, 35, 0)
-        update_bot_chance(65, 35, 0)
+        update_tower_chance(70, 30, 0)
+        update_bot_chance(90, 5, 5)
         explore_chance = 20
         updated = 1
     if turn_count >= early_game and updated == 1:
@@ -392,7 +395,7 @@ def turn():
         is_mid_game = True
         is_late_game = False
         update_tower_chance(55, 40, 5)
-        update_bot_chance(40, 40, 20)
+        update_bot_chance(50, 20, 30)
         explore_chance = 10
         updated = 2
     if turn_count >= mid_game and updated == 2:
@@ -400,7 +403,7 @@ def turn():
         is_mid_game = False
         is_late_game = True
         update_tower_chance(40, 40, 20)
-        update_bot_chance(30, 35, 35)
+        update_bot_chance(40, 25, 35)
         explore_chance = 0
         updated = 3
 
@@ -420,6 +423,20 @@ def turn():
         run_tower()
     else:
         pass  # Other robot types?
+
+def update_phases():
+    global early_game
+    global mid_game
+    game_area = get_map_height() * get_map_width()
+    if game_area >= 400 and game_area < 1225: 
+        early_game = 45
+        mid_game = 450
+    elif game_area < 2115: 
+        early_game = 90
+        mid_game = 700
+    else:
+        early_game = 140
+        mid_game = 950
 
 def run_tower():
     global buildCooldown
@@ -474,6 +491,7 @@ def run_tower():
 
 def run_soldier():
     global explore, paintingSRP
+    global nearby_tiles
     loc = get_location()
     # Try exploring?
     # if explore > 0 and (not paintingSRP):
@@ -513,7 +531,7 @@ def run_soldier():
                 cur_dir = dir
 
     if paintingSRP:
-        paint_nearby_marks(nearby_tiles)
+        paint_nearby_marks()
         if can_complete_resource_pattern(loc):
             complete_resource_pattern(loc)
             log(f"Built a SRP at {loc}")
@@ -530,9 +548,12 @@ def run_soldier():
             else:
                 paintingSRP = False
 
-    if cur_ruin is not None:
-        if not valid_ruin(cur_ruin, nearby_tiles): cur_ruin = None
-        if cur_ruin is not None:
+    if cur_ruin != None:
+        for tile2 in nearby_tiles:
+            if tile2.get_paint().is_enemy() and cur_ruin.get_map_location().distance_squared_to(tile2.get_map_location()) <= 8: 
+                cur_ruin = None
+                break
+        if cur_ruin != None:
             # Should circle around tower to be able to paint all tiles
             target_loc = cur_ruin.get_map_location()
             dir = loc.direction_to(target_loc)
@@ -540,22 +561,40 @@ def run_soldier():
                 move(dir)
             else:
                 # Circle to be able to color every tile
-                dir = circle_around(dir)
+                if dir == Direction.SOUTH: dir = Direction.EAST
+                elif dir == Direction.EAST: dir = Direction.NORTH
+                elif dir == Direction.NORTH: dir = Direction.WEST
+                elif dir == Direction.WEST: dir = Direction.SOUTH
+                elif dir == Direction.SOUTHEAST: dir = Direction.EAST
+                elif dir == Direction.NORTHEAST: dir = Direction.NORTH
+                elif dir == Direction.NORTHWEST: dir = Direction.WEST
+                elif dir == Direction.SOUTHWEST: dir = Direction.SOUTH
                 if can_move(dir):
                     move(dir)
 
             tower_type = get_random_unit(tower_chance)
             # Mark the pattern we need to draw to build a tower here if we haven't already.
-            try_mark_tower_pattern(cur_ruin, tower_type, dir)
+            target_loc = cur_ruin.get_map_location()
+            should_mark = target_loc.subtract(dir)
+            if can_sense_location(should_mark):
+                if sense_map_info(should_mark).get_mark() == PaintType.EMPTY and can_mark_tower_pattern(tower_type, target_loc):
+                    mark_tower_pattern(tower_type, target_loc)
+                    log("Trying to build a tower at " + str(target_loc))
 
             # Fill in any spots in the pattern with the appropriate paint.
-            paint_nearby_marks(nearby_tiles)
+            paint_nearby_marks()
 
             # Complete the ruin if we can.
-            if try_complete_tower_pattern(target_loc): cur_ruin = None
+            for Tower_type in buildable_towers:
+                if Tower_type.is_tower_type() and can_complete_tower_pattern(Tower_type, target_loc):
+                    complete_tower_pattern(Tower_type, target_loc)
+                    # Maybe try to remove mark
+                    set_timeline_marker("Tower built", 0, 255, 0)
+                    log("Built a tower at " + str(target_loc) + "!")
+                    cur_ruin = None
 
     # Fill in any spots in the pattern with the appropriate paint.
-    paint_nearby_marks(nearby_tiles)
+    paint_nearby_marks()
 
     # Upgrade towers
     if can_repeat_cooldowned_action(sense_tower_delay):
@@ -572,7 +611,7 @@ def run_soldier():
     # Try to paint beneath us as we walk to avoid paint penalties.
     # Avoiding wasting paint by re-painting our own tiles.
     current_tile = sense_map_info(loc)
-    if not current_tile.get_paint().is_ally() and can_attack(loc):
+    if is_action_ready() and not current_tile.get_paint().is_ally() and can_attack(loc):
         attack(loc)
 
 def run_mopper():
@@ -749,8 +788,9 @@ def update_friendly_towers():
         known_towers.append(ally_loc)
         set_indicator_string(f"Found tower {ally.get_id()}")
 
+
 def try_to_upgrade_towers():
-    towers = sense_nearby_ruins()
+    towers = sense_nearby_ruins(radius_squared=2)
     if get_chips() >= tower_upgrade_minimum:
         for ruins in towers:
             if can_upgrade_tower(ruins):
@@ -775,53 +815,15 @@ def try_refill_paint(paint_percentage, unitType):
                 known_paint_towers.pop(0)
             elif can_transfer_paint(tower_loc, -paint_per_transfer): transfer_paint(tower_loc, -paint_per_transfer)
 
-# Check if there's no enemy paint on the tower
-def valid_ruin(cur_ruin, nearby_tiles):
-    for tile2 in nearby_tiles:
-        if tile2.get_paint().is_enemy() and cur_ruin.get_map_location().distance_squared_to(tile2.get_map_location()) <= 8: 
-            return False
-    return True
-
-# For a given direction, find its next direction to make a circle
-def circle_around(dir):
-    if dir == Direction.SOUTH: dir = Direction.EAST
-    elif dir == Direction.EAST: dir = Direction.NORTH
-    elif dir == Direction.NORTH: dir = Direction.WEST
-    elif dir == Direction.WEST: dir = Direction.SOUTH
-    elif dir == Direction.SOUTHEAST: dir = Direction.EAST
-    elif dir == Direction.NORTHEAST: dir = Direction.NORTH
-    elif dir == Direction.NORTHWEST: dir = Direction.WEST
-    elif dir == Direction.SOUTHWEST: dir = Direction.SOUTH
-    return dir
-
-# Try to mark tower pattern if possible at given ruin
-def try_mark_tower_pattern(cur_ruin, tower_type, dir):
-    target_loc = cur_ruin.get_map_location()
-    should_mark = target_loc.subtract(dir)
-    if can_sense_location(should_mark):
-        if sense_map_info(should_mark).get_mark() == PaintType.EMPTY and can_mark_tower_pattern(tower_type, target_loc):
-            mark_tower_pattern(tower_type, target_loc)
-            log("Trying to build a tower at " + str(target_loc))
-
 # Ensure marked squares are painted the right color if encountered
-def paint_nearby_marks(nearby_tiles):
+def paint_nearby_marks():
     if not is_action_ready(): return
     for pattern_tile in nearby_tiles:
         if pattern_tile.get_mark() != pattern_tile.get_paint() and pattern_tile.get_mark() != PaintType.EMPTY:
             use_secondary = (pattern_tile.get_mark() == PaintType.ALLY_SECONDARY)
             if can_attack(pattern_tile.get_map_location()):
                 attack(pattern_tile.get_map_location(), use_secondary)
-
-# Find a suitable tower type to complete
-def try_complete_tower_pattern(target_loc):
-    for Tower_type in buildable_towers:
-        if Tower_type.is_tower_type() and can_complete_tower_pattern(Tower_type, target_loc):
-            complete_tower_pattern(Tower_type, target_loc)
-            # Maybe try to remove mark
-            set_timeline_marker("Tower built", 0, 255, 0)
-            log("Built a tower at " + str(target_loc) + "!")
-            return True
-    return False
+                return
 
 # Check whether we can build an SRP here. Returns false if one is already present
 def can_SRP_here():
