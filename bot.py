@@ -294,6 +294,11 @@ def get_random_unit(probabilities):
         if n <= prob: return unit
         n -= prob
 
+def get_tower_type():
+    if get_num_towers() < 4:
+        return UnitType.LEVEL_ONE_MONEY_TOWER
+    return UnitType.LEVEL_ONE_MONEY_TOWER if get_num_towers() % 2 == 1 else UnitType.LEVEL_ONE_PAINT_TOWER
+
 # Determine build delays between each bot spawned by a tower
 buildDelay = 15 # Tune
 buildDeviation = 3
@@ -384,7 +389,7 @@ def turn():
         is_early_game = False
         is_mid_game = True
         is_late_game = False
-        update_tower_chance(55, 40, 5)
+        update_tower_chance(65, 35, 0)
         update_bot_chance(45, 5, 50)
         explore_chance = 10
         updated = 2
@@ -392,7 +397,7 @@ def turn():
         is_early_game = False
         is_mid_game = False
         is_late_game = True
-        update_tower_chance(40, 40, 20)
+        update_tower_chance(55, 45, 0)
         update_bot_chance(35, 0, 65)
         explore_chance = 0
         updated = 3
@@ -409,7 +414,6 @@ def turn():
     elif get_type() == UnitType.SPLASHER:
         run_splasher()
     elif get_type().is_tower_type():
-        update_direction_distribution()
         run_tower()
     else:
         pass  # Other robot types?
