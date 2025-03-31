@@ -553,7 +553,7 @@ def run_soldier():
             target_loc = cur_ruin.get_map_location()
             # Complete the ruin if we can.
             for Tower_type in buildable_towers:
-                if Tower_type.is_tower_type() and can_complete_tower_pattern(Tower_type, target_loc):
+                if can_complete_tower_pattern(Tower_type, target_loc):
                     complete_tower_pattern(Tower_type, target_loc)
                     # Maybe try to remove mark
                     set_timeline_marker("Tower built", 0, 255, 0)
@@ -576,7 +576,7 @@ def run_soldier():
                     if can_move(dir):
                         move(dir)
 
-                tower_type = get_random_unit(tower_chance)
+                tower_type = get_tower_type()
                 # Mark the pattern we need to draw to build a tower here if we haven't already.
                 target_loc = cur_ruin.get_map_location()
                 should_mark = target_loc.subtract(dir)
