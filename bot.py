@@ -305,7 +305,7 @@ save_turns = 45 # Tune
 messenger_work_distribution = 25
 
 # How many turns after does a soldier senses towers
-sense_tower_delay = 10
+sense_tower_delay = 1
 
 # Threshold for returning to ruin (splashers)
 return_to_paint = {UnitType.SOLDIER : 0, UnitType.MOPPER : 0, UnitType.SPLASHER : 25}
