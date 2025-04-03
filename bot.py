@@ -316,7 +316,7 @@ const_walk_chance = {UnitType.SOLDIER : 0, UnitType.MOPPER : 0, UnitType.SPLASHE
 # Paint per transfer
 paint_per_transfer = 50
 # Min splashable squares to attack
-splash_threshold = 7
+splash_threshold = 5
 # Duration of starting turns we don't paint
 non_painting_turns = 25
 # Starting point and max boost of build speed of paint towers
@@ -401,7 +401,7 @@ def turn():
         is_late_game = False
         update_tower_chance(60, 40, 0)
         if size_state == 0:
-            update_bot_chance(60, 15, 25)
+            update_bot_chance(60, 25, 15)
         elif size_state == 1:
             update_bot_chance(70, 10, 20)
         else:
@@ -414,9 +414,9 @@ def turn():
         is_late_game = False
         update_tower_chance(55, 45, 0)
         if size_state == 0:
-            update_bot_chance(50, 15, 35)
+            update_bot_chance(35, 30, 35)
         elif size_state == 1:
-            update_bot_chance(45, 10, 45)
+            update_bot_chance(40, 15, 45)
         else:
             update_bot_chance(50, 5, 45)
         updated = 2
@@ -428,11 +428,11 @@ def turn():
         
         update_tower_chance(50, 50, 0)
         if size_state == 0:
-            update_bot_chance(40, 15, 45)
+            update_bot_chance(25, 35, 40)
         elif size_state == 1:
-            update_bot_chance(35, 15, 50)
+            update_bot_chance(30, 20, 50)
         else:
-            update_bot_chance(30, 5, 65)
+            update_bot_chance(35, 5, 60)
         updated = 3
 
 
