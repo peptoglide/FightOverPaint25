@@ -554,7 +554,9 @@ def run_tower():
     
     # Pick a direction to build in.
     dir = get_random_dir()
+    
     loc = get_location()
+    next_loc = loc.add(dir)
     nearby_robots = sense_nearby_robots(center=loc)
     nearby_tiles = sense_nearby_map_infos(center=loc, radius_squared=8)
     buildDelay = 0
@@ -581,14 +583,11 @@ def run_tower():
                 next_spawn = get_random_unit(bot_chance)
 
             # Test every building direction
-            buildable = get_all_locations_within_radius_squared(center=loc, radius_squared=2)
-            for next_loc in buildable:
-                if can_build_robot(robot_type, next_loc):
-                    build_robot(robot_type, next_loc)
-                    next_spawn = get_random_unit(bot_chance)
-                    buildCooldown = buildDelay + random.randint(-buildDeviation, buildDeviation)
-                    log("BUILT A " + bot_name[robot_type])
-                    break
+            if can_build_robot(robot_type, next_loc):
+                build_robot(robot_type, next_loc)
+                next_spawn = get_random_unit(bot_chance)
+                buildCooldown = buildDelay + random.randint(-buildDeviation, buildDeviation)
+                log("BUILT A " + bot_name[robot_type])
 
     if (get_paint() <= 100) and (not is_starting_tower and (get_chips() >= flicker_chips_threshold or active_turns >= money_tower_existence)):
         if can_complete_tower(loc, nearby_robots): disintegrate()
