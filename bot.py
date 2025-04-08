@@ -87,7 +87,7 @@ def create_line(a, b):
 
     locations.add(MapLocation(x, y))
     return locations
-
+# well played gg guys
 def bug2(target):
     global prev_dest, line, tracing, obstacle_start_dist, tracing_dir
 
@@ -873,7 +873,7 @@ def run_mopper():
             run_aggresive_mopper()
         else:
             try_refill_paint(paint_percentage, UnitType.MOPPER)
-
+# this is how the story goes
 def run_aggresive_mopper():
     global nearby_tiles
     global const_dir
